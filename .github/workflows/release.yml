@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    branches:
-      - add-gh-actions
+    tags:
+      - "*.*.*"
 
 jobs:
   release-app:
@@ -13,10 +13,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: "macos-latest"
-            args: "--target aarch64-apple-darwin"
-          - platform: "macos-latest"
-            args: "--target x86_64-apple-darwin"
+          # TODO: Disable these targets for now, since there is a bug on git-cliff
+          # - platform: "macos-latest"
+          #   args: "--target aarch64-apple-darwin"
+          # - platform: "macos-latest"
+          #   args: "--target x86_64-apple-darwin"
           - platform: "ubuntu-latest"
             args: ""
           - platform: "windows-latest"
@@ -25,7 +26,9 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Checkout Project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,13 +49,22 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
-      - name: Generate changelogs
-        id: changelog
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Update App version
         run: |
-          cargo install git-cliff
-          echo 'notes<<EOF' >> $GITHUB_OUTPUT
-          git-cliff --latest --strip all --use-branch-tags >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
+          perl -pi -e 's/^version = ".*"/version = "${{ env.VERSION }}"/' src-tauri/Cargo.toml
+
+      - name: Generate changelogs
+        uses: orhun/git-cliff-action@v4
+        id: changelog
+        with:
+          config: cliff.toml
+          args: --strip header
+        env:
+          OUTPUT: CHANGELOG.md
 
       - name: Build && Publish
         uses: tauri-apps/tauri-action@v0
@@ -61,9 +73,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           APPIMAGE_EXTRACT_AND_RUN: 1
         with:
-          tagName: __VERSION__
-          releaseName: "v__VERSION__"
-          releaseBody: "${{ steps.changelog.outputs.notes || '' }}"
+          tagName: ${{ env.VERSION }}
+          releaseName: "v${{ env.VERSION }}"
+          releaseBody: "${{ steps.changelog.outputs.content }}"
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

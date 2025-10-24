@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "rs-camera-controls",
-  "version": "0.1.0",
   "identifier": "com.matrix.rs-camera-controls",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,7 +13,7 @@
       {
         "title": "rs-camera-controls",
         "width": 800,
-        "height": 600
+        "height": 850
       }
     ],
     "security": {
