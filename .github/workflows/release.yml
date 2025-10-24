@@ -46,14 +46,24 @@ jobs:
       - name: Install Node dependencies
         run: npm install
 
+      - name: Generate changelogs
+        id: changelog
+        run: |
+          cargo install git-cliff
+          echo 'notes<<EOF' >> $GITHUB_OUTPUT
+          git-cliff --latest --strip all --use-branch-tags >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
       - name: Build && Publish
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           APPIMAGE_EXTRACT_AND_RUN: 1
         with:
           tagName: __VERSION__
           releaseName: "v__VERSION__"
+          releaseBody: "${{ steps.changelog.outputs.notes || '' }}"
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
