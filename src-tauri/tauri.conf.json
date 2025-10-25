@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "rs-camera-controls",
-  "version": "0.1.0",
   "identifier": "com.matrix.rs-camera-controls",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -14,7 +13,7 @@
       {
         "title": "rs-camera-controls",
         "width": 800,
-        "height": 600
+        "height": 850
       }
     ],
     "security": {
@@ -23,6 +22,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "icon": [
       "icons/32x32.png",
@@ -31,5 +31,16 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM5NUMwODRGRTkwOEY0OEEKUldTSzlBanBUd2hjT2ExZGtYMkZ4b3lldHJ4NlVYd3hNTm02S1lqRFNxTC9jS0dnTjd6RDZCangK",
+      "endpoints": [
+        "https://github.com/MGSousa/rs-camera-controls/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
