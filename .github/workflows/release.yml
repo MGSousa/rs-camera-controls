@@ -62,7 +62,7 @@ jobs:
         id: changelog
         with:
           config: cliff.toml
-          args: --strip header
+          args: --strip header --latest
         env:
           OUTPUT: CHANGELOG.md
 
