@@ -5,7 +5,39 @@ import { register } from "@tauri-apps/plugin-global-shortcut";
 import { initStore, get, set } from "@/composables/StoreApp";
 import VueSlider from "vue-3-slider-component";
 
+import { ask, message } from "@tauri-apps/plugin-dialog";
+import { check } from "@tauri-apps/plugin-updater";
+
 onMounted(async () => {
+  // check for updates
+  const update = await check();
+  if (update) {
+    const confirmation = await ask(
+      `Is available a new update. \nRelease Notes: \n${update.body}\n\n Install it now?`,
+      {
+        title: `Update to ${update.version}`,
+        kind: "info",
+      },
+    );
+
+    if (confirmation) {
+      await update.downloadAndInstall(async (event) => {
+        switch (event.event) {
+          case "Finished":
+            await message(
+              "Installation succeeded! Restart the app to use the new version!",
+              {
+                title: "Update",
+                kind: "info",
+              },
+            );
+            break;
+        }
+      });
+    }
+  }
+
+  // init store
   await initStore();
 });
 
@@ -34,9 +66,9 @@ async function listCameras() {
 async function saveCamera() {
   await set("index", { value: currentCamera.value });
   await invoke("set_camera", { device: currentCamera.value });
-  msg.value = "Selected camera saved";
+  msg.value = `Selected device ${cameras.value[currentCamera.value]} saved`;
 
-  setTimeout(() => (msg.value = ""), 10000);
+  setTimeout(() => (msg.value = ""), 5000);
 }
 
 async function callController(control: string) {

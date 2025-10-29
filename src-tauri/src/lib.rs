@@ -11,6 +11,7 @@ use serde::{de::Error as DeError, Serialize};
 use serde_json::{from_value, to_value, Map, Value};
 
 use tauri::{AppHandle, Manager, State, Wry};
+use tauri_plugin_log::log;
 use tauri_plugin_store::StoreExt;
 
 const STORE_FILE: &str = "settings.json";
@@ -83,7 +84,8 @@ fn list_cameras() -> Vec<String> {
     let cameras = match query(ApiBackend::Auto) {
         Ok(cameras) => cameras,
         Err(e) => {
-            panic!("Failed to query cameras: {:?}", e);
+            log::error!("Failed to query cameras: {:?}", e);
+            panic!()
         }
     };
     let mut i = 0;
@@ -117,13 +119,19 @@ fn control(state: State<'_, CamState>, method: String, value: i64) -> String {
         Ok(mut camera) => {
             match camera.camera_controls_string() {
                 Ok(v) => {
-                    let res = camera.set_camera_control(
+                    match camera.set_camera_control(
                         v.get(&title(&method)).unwrap().control(),
                         ControlValueSetter::Integer(value),
-                    );
-                    println!("{res:?}")
+                    ) {
+                        Ok(_) => (),
+                        Err(e) => log::error!(
+                            "Failed to set action <{}> on device: {:?}",
+                            method.clone(),
+                            e
+                        ),
+                    }
                 }
-                Err(e) => println!("{}", e.to_string()),
+                Err(e) => log::error!("{}", e.to_string()),
             };
             format!("")
         }
@@ -134,6 +142,12 @@ fn control(state: State<'_, CamState>, method: String, value: i64) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Error)
+                .build(),
+        )
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_positioner::init())
@@ -150,21 +164,20 @@ pub fn run() {
             }
 
             store.set("profile_0", Value::Object(res));
-            store.set("current", 0);
 
+            // set default device
+            let mut index = CameraIndex::Index(1);
             let value = store.get("index");
             match value {
                 Some(v) => {
                     let c: HashMap<String, u32> = from_value(v).unwrap();
-                    let index = CameraIndex::Index(*c.get("value").unwrap());
-
-                    let state = AppState { index };
-                    app.manage(Mutex::new(state));
+                    index = CameraIndex::Index(*c.get("value").unwrap());
                 }
-                None => {
-                    println!("Failed to get value from store")
-                }
+                None => {}
             }
+
+            let state = AppState { index };
+            app.manage(Mutex::new(state));
 
             #[cfg(desktop)]
             {
@@ -221,9 +234,7 @@ pub fn run() {
 fn restore(app: &AppHandle<Wry>) {
     if let Some(window) = app.get_webview_window("main") {
         if let Err(err) = window.show() {
-            println!("Failed to restore the window: {:?}", err);
-        } else {
-            println!("Window successfully restored.");
+            log::error!("Failed to restore the window: {:?}", err);
         }
     } else {
         println!("Main window not found.");
@@ -233,9 +244,7 @@ fn restore(app: &AppHandle<Wry>) {
 fn hide(app: &AppHandle<Wry>) {
     if let Some(window) = app.get_webview_window("main") {
         if let Err(err) = window.hide() {
-            println!("Failed to hide the window: {:?}", err);
-        } else {
-            println!("Window successfully hidden.");
+            log::error!("Failed to hide the window: {:?}", err);
         }
     } else {
         println!("Main window not found.");
