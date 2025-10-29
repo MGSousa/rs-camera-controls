@@ -1,6 +1,23 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    ":disableDependencyDashboard"
+  ],
+  "labels": [
+    "dependencies",
+    "{{#if isPatch}}patch{{/if}}{{#if isMinor}}minor{{/if}}{{#if isMajor}}major{{/if}}"
+  ],
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "npm",
+        "crate"
+      ],
+      "matchSourceUrls": [
+        "https://github.com/tauri-apps/plugins-workspace"
+      ],
+      "groupName": "Update tauri packages"
+    }
   ]
 }
