@@ -90,7 +90,14 @@ fn list_cameras() -> Vec<String> {
     };
     let mut i = 0;
     for camera in cameras {
-        vc.insert(i.clone(), camera.human_name());
+        vc.insert(
+            i.clone(),
+            format!(
+                "{}: {}",
+                camera.human_name(),
+                camera.description().to_string()
+            ),
+        );
         i += 1;
     }
     vc
@@ -118,24 +125,30 @@ fn control(state: State<'_, CamState>, method: String, value: i64) -> String {
     match fetch_cam(state.index.clone()) {
         Ok(mut camera) => {
             match camera.camera_controls_string() {
-                Ok(v) => {
-                    match camera.set_camera_control(
-                        v.get(&title(&method)).unwrap().control(),
-                        ControlValueSetter::Integer(value),
-                    ) {
-                        Ok(_) => (),
-                        Err(e) => log::error!(
-                            "Failed to set action <{}> on device: {:?}",
-                            method.clone(),
-                            e
-                        ),
+                Ok(v) => match v.get(&title(&method)) {
+                    Some(m) => {
+                        match camera
+                            .set_camera_control(m.control(), ControlValueSetter::Integer(value))
+                        {
+                            Ok(_) => (),
+                            Err(e) => log::error!(
+                                "Failed to set action <{}> on device: {:?}",
+                                method.clone(),
+                                e
+                            ),
+                        }
                     }
-                }
-                Err(e) => log::error!("{}", e.to_string()),
+                    None => log::error!(
+                        "Method {} not found for device {:?}",
+                        method.clone(),
+                        state.index.clone()
+                    ),
+                },
+                Err(e) => log::error!("Cannot list device controls: {}", e.to_string()),
             };
             format!("")
         }
-        Err(e) => format!("{}", e.to_string()),
+        Err(e) => format!("Cannot fetch devices: {}", e.to_string()),
     }
 }
 
